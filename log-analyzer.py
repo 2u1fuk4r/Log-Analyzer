@@ -11,7 +11,7 @@ def print_banner():
     banner = """
 ╔════════════════════════════════════╗
 ║           LOG ANALYZER             ║
-║   FINAL INTERNATIONAL UNIVERSITY   ║
+║                                    ║
 ║          made by 2u1fuk4r          ║
 ╚════════════════════════════════════╝
 """
