@@ -29,4 +29,9 @@ chmod +x install.sh
 chmod +x log-analyzer.py
 bash install.sh
 
+=== run the tool===
 python3 log-analyzer.py
+
+=== For remove the all logs ===
+Warning it is remove permanently!!!
+python3 log-analyzer.py --reset
