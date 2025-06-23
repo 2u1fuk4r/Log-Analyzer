@@ -29,5 +29,4 @@ chmod +x install.sh
 chmod +x log-analyzer.py
 bash install.sh
 
-```bash
 python3 log-analyzer.py
