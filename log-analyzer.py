@@ -38,6 +38,7 @@ def get_journal_logs(since=None, until=None):
 def parse_logs(lines):
     failed_logins = Counter()
     suspicious_logins = defaultdict(list)
+    successful_logins = defaultdict(list)
     system_errors = []
 
     ip_regex = re.compile(
@@ -58,12 +59,13 @@ def parse_logs(lines):
                 user = user_match.group(1)
                 ip = ip_match.group(1)
                 suspicious_logins[user].append(ip)
+                successful_logins[user].append(ip)
         elif "error" in lower or "kernel:" in lower:
             system_errors.append(line.strip())
 
-    return failed_logins, suspicious_logins, system_errors
+    return failed_logins, suspicious_logins, successful_logins, system_errors
 
-def generate_report(failed_logins, suspicious_logins, system_errors):
+def generate_report(failed_logins, suspicious_logins, successful_logins, system_errors):
     console.rule("[bold green]Security Summary Report")
 
     table1 = Table(title="Failed SSH Login Attempts")
@@ -92,6 +94,18 @@ def generate_report(failed_logins, suspicious_logins, system_errors):
     else:
         console.print("[green]No unusual user login activity detected.")
 
+    table3 = Table(title="All Accepted SSH Logins")
+    table3.add_column("Username", style="cyan")
+    table3.add_column("IP Addresses", style="green")
+
+    for user, ips in successful_logins.items():
+        table3.add_row(user, ", ".join(sorted(set(ips))))
+
+    if table3.row_count:
+        console.print(table3)
+    else:
+        console.print("[green]No successful SSH logins found.")
+
     if system_errors:
         console.print("\n[bold red]System Errors or Kernel Warnings:")
         for err in system_errors[:5]:
@@ -113,14 +127,12 @@ def clear_journal_logs():
     console.print("[green]✅ systemd journal logs cleared.[/green]")
 
 def save_history(failed_logins, suspicious_logins):
-    # Load existing history
     try:
         with open(STORAGE_FILE, 'r') as f:
             history = json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         history = {}
 
-    # Update history with current counts
     for ip, count in failed_logins.items():
         history.setdefault('failed_logins', {})
         history['failed_logins'][ip] = history['failed_logins'].get(ip, 0) + count
@@ -164,10 +176,11 @@ def print_blocking_commands(failed_logins):
             console.print(f"iptables: sudo iptables -A INPUT -s {ip} -j DROP")
             console.print(f"fail2ban: Add to jail.local or use fail2ban-client to ban {ip}")
 
-def export_report(failed_logins, suspicious_logins, system_errors, filename):
+def export_report(failed_logins, suspicious_logins, successful_logins, system_errors, filename):
     report = {
         "failed_logins": dict(failed_logins),
         "suspicious_logins": {u: list(set(ips)) for u, ips in suspicious_logins.items()},
+        "successful_logins": {u: list(set(ips)) for u, ips in successful_logins.items()},
         "system_errors": system_errors[:10]
     }
     try:
@@ -184,6 +197,9 @@ def export_report(failed_logins, suspicious_logins, system_errors, filename):
                 for user, ips in suspicious_logins.items():
                     if len(set(ips)) > 1:
                         f.write(f"{user}: {', '.join(set(ips))}\n")
+                f.write("\n=== All Accepted SSH Logins ===\n")
+                for user, ips in successful_logins.items():
+                    f.write(f"{user}: {', '.join(set(ips))}\n")
                 f.write("\n=== System Errors or Kernel Warnings ===\n")
                 for err in system_errors[:10]:
                     f.write(f"{err}\n")
@@ -237,18 +253,17 @@ def main():
         return
 
     lines = get_journal_logs(args.since, args.until)
-    failed_logins, suspicious_logins, system_errors = parse_logs(lines)
-    generate_report(failed_logins, suspicious_logins, system_errors)
+    failed_logins, suspicious_logins, successful_logins, system_errors = parse_logs(lines)
+    generate_report(failed_logins, suspicious_logins, successful_logins, system_errors)
 
     if args.recommend:
         print_blocking_commands(failed_logins)
 
     if args.export:
-        export_report(failed_logins, suspicious_logins, system_errors, args.export)
+        export_report(failed_logins, suspicious_logins, successful_logins, system_errors, args.export)
 
     save_history(failed_logins, suspicious_logins)
     show_recommendations(failed_logins, suspicious_logins, system_errors)
-
 
 if __name__ == "__main__":
     main()
