@@ -32,6 +32,17 @@ bash install.sh
 === run the tool===
 python3 log-analyzer.py
 
-=== For remove the all logs ===
-Warning it is remove permanently!!!
-python3 log-analyzer.py --reset
+Help Menu
+python3 log-analyzer.py --help
+usage: log-analyzer.py [-h] [-r] [--since SINCE] [--until UNTIL] [--export FILE] [--recommend]
+
+SSH Log Analyzer Tool Analyze SSH logs from systemd journal, detect suspicious activity, and optionally reset logs or export reports.
+
+options:
+  -h, --help     show this help message and exit
+  -r, --reset    Permanently delete all systemd journal logs (requires root)
+  --since SINCE  Start time for logs (e.g., "2025-06-22 08:00:00" or "2 hours ago")
+  --until UNTIL  End time for logs (e.g., "2025-06-22 10:00:00")
+  --export FILE  Export the report to specified file (TXT or JSON based on extension)
+  --recommend    Show iptables/fail2ban commands to block IPs with failed logins
+
